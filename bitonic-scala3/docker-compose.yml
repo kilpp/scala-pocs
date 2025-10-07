@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  redis:
+    image: redis:7.2-alpine
+    ports:
+      - "6379:6379"
+
+  app:
+    build: .
+    depends_on:
+      - redis
+    # Use host networking to allow the application to connect to Redis on localhost.
+    # This is necessary because the application is hardcoded to connect to Redis.local.
+    network_mode: host
