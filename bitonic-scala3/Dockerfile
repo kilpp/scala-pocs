@@ -1,17 +1,34 @@
-FROM openjdk:11
-ARG SBT_VERSION=1.9.9
+FROM openjdk:24-slim
 
-RUN mkdir /working/ && \
-    cd /working/ && \
-    curl -L -o sbt-$SBT_VERSION.deb https://dl.bintray.com/sbt/debian/sbt-$SBT_VERSION.deb && \
-    echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" >> /etc/apt/sources.list.d/sbt.list && \
-    curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | apt-key add - && \
+# Metadata labels
+LABEL name="bitonic-scala3"
+LABEL version="1.0.0"
+LABEL description="Scala 3 application with ZIO Http and ZIO Redis"
+
+
+# Install necessary packages for certificate management and curl
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the certificate from host machine
+COPY cert.pem /usr/local/share/ca-certificates/cert.crt
+
+# Update the certificate store to include the new certificate
+RUN update-ca-certificates
+
+# Set curl to use the system certificate store
+ENV CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+
+# Install SBT using the official repository method
+RUN echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" | tee /etc/apt/sources.list.d/sbt.list && \
+    echo "deb https://repo.scala-sbt.org/scalasbt/debian /" | tee /etc/apt/sources.list.d/sbt_old.list && \
+    curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | gpg --no-default-keyring --keyring gnupg-ring:/etc/apt/trusted.gpg.d/scalasbt-release.gpg --import && \
+    chmod 644 /etc/apt/trusted.gpg.d/scalasbt-release.gpg && \
     apt-get update && \
-    apt-get install -y sbt=$SBT_VERSION && \
-    rm sbt-$SBT_VERSION.deb && \
-    cd && \
-    rm -r /working/ && \
-    sbt sbtVersion
+    apt-get install -y sbt
 
 RUN mkdir app
 
