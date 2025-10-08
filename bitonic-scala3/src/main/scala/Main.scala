@@ -13,6 +13,7 @@ object Main extends ZIOAppDefault {
         (for {
           redis <- ZIO.service[Redis]
           cached <- redis.get(key).returning[String]
+          _ <- ZIO.logInfo(s"Cache lookup for key '$key': ${cached.getOrElse("MISS")}")
           result <- cached match {
             case Some(g) => ZIO.succeed((g, true))
             case None =>
@@ -20,9 +21,10 @@ object Main extends ZIOAppDefault {
               redis.set(key, g, Some(5.minutes)).as((g, false))
           }
           (greeting, wasCached) = result
+          _ <- ZIO.logInfo(s"Greeting: $greeting (cached: $wasCached)")
           resp = Response.text(greeting).addHeader("X-Cache", if (wasCached) "HIT" else "MISS")
         } yield resp)
-          .catchAll(e => ZIO.succeed(Response.text(s"Redis error: ${e.getMessage}").status(Status.InternalServerError)))
+          .catchAll(e => ZIO.fail(Response.text(s"Unexpected error: ${e.getMessage}").status(Status.InternalServerError)))
       }
     }
 
@@ -39,12 +41,18 @@ object Main extends ZIOAppDefault {
     def get[A: Schema]: BinaryCodec[A] = ProtobufCodec.protobufCodec
   }
 
+  // Environment variables for Redis configuration
+  private val redisHost = sys.env.getOrElse("REDIS_HOST", "localhost")
+  private val redisPort = sys.env.get("REDIS_PORT").flatMap(_.toIntOption).getOrElse(6379)
+  private val appPort = sys.env.get("APP_PORT").flatMap(_.toIntOption).getOrElse(8080)
+
   def run: ZIO[Any, Throwable, Nothing] =
     Server
       .serve(routes)
       .provide(
-        Server.default,
-        Redis.local, // connects to local Redis (ensure redis is running)
+        Server.defaultWithPort(appPort),
+        Redis.singleNode,
+        ZLayer.succeed[RedisConfig](RedisConfig(host = redisHost, port = redisPort)),
         ZLayer.succeed[CodecSupplier](ProtobufCodecSupplier)
       )
 }

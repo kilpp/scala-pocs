@@ -3,12 +3,21 @@ services:
     image: redis:7.2-alpine
     ports:
       - "6379:6379"
-
+    networks:
+      - bitonic
   app:
     build: .
     depends_on:
       - redis
-    # Use host networking to allow the application to connect to Redis on localhost.
-    # This is necessary because the application is hardcoded to connect to Redis.local.
-    network_mode: host
+    environment:
+      APP_PORT: 8080
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "8080:8080"
+    networks:
+      - bitonic
 
+networks:
+  bitonic:
+    driver: bridge
