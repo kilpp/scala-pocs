@@ -1,0 +1,1 @@
+podman build -f Dockerfile.redis -t bitonic-redis .
