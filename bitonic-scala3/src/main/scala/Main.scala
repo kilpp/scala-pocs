@@ -38,12 +38,12 @@ object Main extends ZIOAppDefault {
       }
     }
 
-  private val routes: Routes[Redis & Bitonic, Nothing] = Routes(
+  val routes: Routes[Redis & Bitonic, Nothing] = Routes(
     healthRoute,
     bitonicRoute
   )
 
-  private object ProtobufCodecSupplier extends CodecSupplier {
+  object ProtobufCodecSupplier extends CodecSupplier {
     def get[A: Schema]: BinaryCodec[A] = ProtobufCodec.protobufCodec
   }
 
