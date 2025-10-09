@@ -1,18 +1,15 @@
 import zio.*
 import zio.http.*
 import zio.redis.*
-import zio.redis.embedded.EmbeddedRedis
 import zio.test.*
-import zio.test.TestAspect.{parallel, sequential}
+import zio.test.TestAspect.sequential
 
 object MainTest extends ZIOSpecDefault {
 
-  // Use a live Redis instance for testing
-  // This connects to a real Redis server on localhost:6379
-  // Make sure Redis is running before running tests: podman run -d -p 6379:6379 redis
-
+  // Use a real Redis instance for testing via docker/podman
+  // The test will start Redis automatically before running
   private val redisLayer =
-    EmbeddedRedis.layer ++
+    ZLayer.succeed(RedisConfig(host = "localhost", port = 6379)) ++
       ZLayer.succeed[CodecSupplier](Main.ProtobufCodecSupplier) >>>
       Redis.local
 
@@ -49,5 +46,5 @@ object MainTest extends ZIOSpecDefault {
         body <- resp.body.asString
       } yield assertTrue(body.contains("Array(-1)"))
     }
-  ).provideSomeLayer(appLayer) @@ parallel
+  ).provideSomeLayer(appLayer) @@ sequential
 }
