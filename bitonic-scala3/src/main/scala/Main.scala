@@ -18,7 +18,7 @@ object Main extends ZIOAppDefault {
         val r = req.queryOrElse[Int]("r", 0)
         val key = s"bitonic:n=$n-l=$l-r=$r"
         (for {
-          bitonic <- ZIO.service[Bitonic]
+          bitonic <- ZIO.service[Bitonic.Impl]
           bitonicArray <- bitonic.bitonicArray(n, l, r)
           _ <- ZIO.logInfo(s"Bitonic array generated: ${bitonicArray.mkString("Array(", ", ", ")")}")
           redis <- ZIO.service[Redis]
@@ -38,7 +38,7 @@ object Main extends ZIOAppDefault {
       }
     }
 
-  val routes: Routes[Redis & Bitonic, Nothing] = Routes(
+  val routes: Routes[Redis & Bitonic.Impl, Nothing] = Routes(
     healthRoute,
     bitonicRoute
   )

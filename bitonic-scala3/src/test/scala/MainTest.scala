@@ -2,7 +2,7 @@ import zio.*
 import zio.http.*
 import zio.redis.*
 import zio.test.*
-import zio.test.TestAspect.sequential
+import zio.test.TestAspect.{sequential, withLiveClock}
 
 object MainTest extends ZIOSpecDefault {
 
@@ -11,7 +11,7 @@ object MainTest extends ZIOSpecDefault {
   private val redisLayer =
     ZLayer.succeed(RedisConfig(host = "localhost", port = 6379)) ++
       ZLayer.succeed[CodecSupplier](Main.ProtobufCodecSupplier) >>>
-      Redis.local
+      Redis.singleNode
 
   private val appLayer = redisLayer ++ Bitonic.live
 
@@ -46,5 +46,5 @@ object MainTest extends ZIOSpecDefault {
         body <- resp.body.asString
       } yield assertTrue(body.contains("Array(-1)"))
     }
-  ).provideSomeLayer(appLayer) @@ sequential
+  ).provideSomeLayer(appLayer) @@ sequential @@ withLiveClock
 }

@@ -2,12 +2,9 @@ import zio.{UIO, ULayer, ZIO, ZLayer}
 
 import scala.collection.mutable
 
-trait Bitonic:
-  def bitonicArray(n: Int, l: Int, r: Int): UIO[Array[Int]]
-
 object Bitonic:
 
-  private final case class Impl() extends Bitonic:
+  final case class Impl():
     def bitonicArray(n: Int, l: Int, r: Int): UIO[Array[Int]] =
       ZIO.succeed {
         if n > (r - l) * 2 + 1 then
@@ -26,4 +23,4 @@ object Bitonic:
           dq.toArray
       }
 
-  val live: ULayer[Bitonic] = ZLayer.succeed(Impl())
+  val live: ULayer[Bitonic.Impl] = ZLayer.succeed(Impl())
