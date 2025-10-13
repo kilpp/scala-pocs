@@ -24,7 +24,7 @@ object MainTest extends ZIOSpecDefault {
       } yield assertTrue(resp.status == Status.Ok, body == "Ok")
     },
     test("GET /bitonic returns array and caches on second call") {
-      val req = Request.get(URL.decode("/bitonic?n=5&l=1&r=10").toOption.get)
+      val req = Request.post(URL.decode("/bitonic?n=5&l=1&r=10").toOption.get, Body.empty)
       for {
         resp1 <- Main.routes.runZIO(req)
         body1 <- resp1.body.asString
@@ -40,7 +40,7 @@ object MainTest extends ZIOSpecDefault {
       )
     },
     test("GET /bitonic impossible case returns Array(-1)") {
-      val req = Request.get(URL.decode("/bitonic?n=999&l=1&r=3").toOption.get)
+      val req = Request.post(URL.decode("/bitonic?n=999&l=1&r=3").toOption.get, Body.empty)
       for {
         resp <- Main.routes.runZIO(req)
         body <- resp.body.asString

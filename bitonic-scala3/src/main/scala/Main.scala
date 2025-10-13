@@ -11,7 +11,7 @@ object Main extends ZIOAppDefault {
   }
 
   private val bitonicRoute =
-    Method.GET / "bitonic" -> handler { (req: Request) =>
+    Method.POST / "bitonic" -> handler { (req: Request) =>
       ZIO.logInfo(s"Called /bitonic with queryParams=${req.url.queryParams}") *> {
         val n = req.queryOrElse[Int]("n", 0)
         val l = req.queryOrElse[Int]("l", 0)
