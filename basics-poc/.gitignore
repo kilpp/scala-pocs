@@ -1,13 +1,11 @@
 target/
-project/target/
-project/project/
-project/.bloop/
-project/metals.sbt
 .bsp/
 .bloop/
 .metals/
+.scala-build/
 .idea/
 .vscode/
+cs
 *.class
 *.log
 hs_err_pid*
