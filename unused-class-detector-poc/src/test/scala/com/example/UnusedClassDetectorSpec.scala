@@ -75,6 +75,78 @@ final class UnusedClassDetectorSpec extends AnyFunSuite, Matchers:
     )
     unusedNames(sources) shouldBe empty
 
+  test("a class that is only imported is still flagged unused"):
+    val sources = Map(
+      "Dead.scala" ->
+        """package legacy
+          |class Dead
+          |""".stripMargin,
+      "Main.scala" ->
+        """import legacy.Dead
+          |object Main extends App:
+          |  println("never touches Dead")
+          |""".stripMargin
+    )
+    unusedNames(sources) shouldBe Set("Dead")
+
+  test("an imported class actually used in the body stays alive"):
+    val sources = Map(
+      "Dead.scala" ->
+        """package legacy
+          |class Dead
+          |""".stripMargin,
+      "Main.scala" ->
+        """import legacy.Dead
+          |object Main extends App:
+          |  println(new Dead)
+          |""".stripMargin
+    )
+    unusedNames(sources) shouldBe empty
+
+  test("an import used only inside the importing class's own body still respects self-reference rules"):
+    val sources = Map(
+      "Helper.scala" ->
+        """package legacy
+          |class Helper
+          |""".stripMargin,
+      "Orphan.scala" ->
+        """import legacy.Helper
+          |class Orphan:
+          |  def helper: Helper = new Helper
+          |""".stripMargin,
+      "Main.scala" -> "object Main extends App:\n  println(\"hi\")"
+    )
+    // Orphan is dead, so its body usages cannot keep Helper alive either.
+    unusedNames(sources) shouldBe Set("Helper", "Orphan")
+
+  test("rename imports resolve alias usages to the original class"):
+    val sources = Map(
+      "Helper.scala" ->
+        """package legacy
+          |class Helper
+          |""".stripMargin,
+      "Main.scala" ->
+        """import legacy.Helper as H
+          |object Main extends App:
+          |  println(new H)
+          |""".stripMargin
+    )
+    unusedNames(sources) shouldBe empty
+
+  test("a rename import whose alias is never used does not keep the original alive"):
+    val sources = Map(
+      "Helper.scala" ->
+        """package legacy
+          |class Helper
+          |""".stripMargin,
+      "Main.scala" ->
+        """import legacy.Helper as H
+          |object Main extends App:
+          |  println("never touches H")
+          |""".stripMargin
+    )
+    unusedNames(sources) shouldBe Set("Helper")
+
   test("mutually recursive dead classes survive (documented limitation)"):
     val sources = Map(
       "Cycle.scala" ->
