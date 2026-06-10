@@ -6,7 +6,9 @@ object UnusedClassDetectorPoc:
 
   // A tiny fake codebase analyzed by the demo run when no path is given:
   // Square is directly unused; LegacyService and LegacyRepo are dead together
-  // (only the dead service references the repo); the rest hangs off Main.
+  // (only the dead service references the repo); Reporting imports
+  // LegacyService without ever using it, which keeps neither of them alive;
+  // the rest hangs off Main.
   val sampleSources: Map[String, String] = Map(
     "Shapes.scala" ->
       """trait Shape:
@@ -25,10 +27,17 @@ object UnusedClassDetectorPoc:
         |final class LegacyService(repo: LegacyRepo):
         |  def run(): String = repo.load()
         |""".stripMargin,
+    "Reporting.scala" ->
+      """import legacy.LegacyService
+        |
+        |object Reporting:
+        |  def title: String = "quarterly report"
+        |""".stripMargin,
     "Main.scala" ->
       """object Main extends App:
         |  val shape: Shape = Circle(2.0)
         |  println(shape.area)
+        |  println(Reporting.title)
         |""".stripMargin
   )
 
