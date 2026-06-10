@@ -17,11 +17,14 @@ final case class Report(declared: List[Decl], unused: List[Decl]):
   *
   * The analysis is purely syntactic (scalameta parse, no compilation), so
   * declarations are matched to references by simple name: two same-named
-  * classes in different packages are treated as one entity, and an import of
-  * a name counts as a reference. Removal is transitive — a class referenced
-  * only from other unused classes is itself reported unused — but mutually
-  * recursive dead cycles survive, since each member keeps the other alive.
-  * Objects extending App are entry points and always count as used.
+  * classes in different packages are treated as one entity. Import clauses
+  * are not references — a class that is imported but never used in the
+  * importing file's body is still flagged — and rename imports (Foo as Bar)
+  * are resolved so usages of the alias count for the original name. Removal
+  * is transitive — a class referenced only from other unused classes is
+  * itself reported unused — but mutually recursive dead cycles survive,
+  * since each member keeps the other alive. Objects extending App are entry
+  * points and always count as used.
   */
 object UnusedClassDetector:
 
@@ -55,9 +58,22 @@ object UnusedClassDetector:
 
     val refsByName: Map[String, List[Ref]] = parsed
       .flatMap: (file, tree) =>
-        tree.collect:
-          case n: Name if declaredNames(n.value) && !definingTokens((file, n.pos.start)) =>
-            Ref(n.value, file, n.pos.start)
+        // Mentioning a name in an import clause is not a reference: only a
+        // usage in the body keeps a declaration alive. Rename importees are
+        // remembered so body usages of the alias count for the original.
+        val importRanges = tree.collect { case i: Import => (i.pos.start, i.pos.end) }
+        def insideImport(start: Int) = importRanges.exists((s, e) => start >= s && start < e)
+        val aliases: Map[String, String] = tree.collect {
+          case Importee.Rename(original, alias) => alias.value -> original.value
+        }.toMap
+        tree
+          .collect:
+            case n: Name if !insideImport(n.pos.start) && !definingTokens((file, n.pos.start)) =>
+              val target =
+                if declaredNames(n.value) then Some(n.value)
+                else aliases.get(n.value).filter(declaredNames)
+              target.map(Ref(_, file, n.pos.start))
+          .flatten
       .groupBy(_.name)
 
     @tailrec
